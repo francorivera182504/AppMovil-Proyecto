@@ -1,22 +1,13 @@
 package com.tuempresa.restaurantedelivery.ui.theme
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.tuempresa.restaurantedelivery.model.Producto
 
 @Composable
@@ -25,53 +16,99 @@ fun ProductoDetalleScreen(
     onAgregarProducto: () -> Unit,
     onVolverMenu: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        AsyncImage(
-            model = producto.imagenUrl,
-            contentDescription = producto.nombre,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(250.dp)
-                .clip(RoundedCornerShape(20.dp)),
-            contentScale = ContentScale.Crop
-        )
+    Scaffold(
+        topBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.background
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 8.dp)
+                ) {
+                    TextButton(onClick = onVolverMenu) {
+                        Text("← Volver al menú")
+                    }
+                }
+            }
+        },
+        bottomBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 8.dp,
+                shape = RoundedCornerShape(
+                    topStart = 24.dp,
+                    topEnd = 24.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Precio",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
 
-        Text(
-            text = producto.nombre,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
+                        Text(
+                            text = "S/ %.2f".format(producto.precio),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
 
-        Text(
-            text = producto.descripcion,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Text(
-            text = "S/ %.2f".format(producto.precio),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-
-        Button(
-            onClick = onAgregarProducto,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Agregar al carrito")
+                    BotonDelivery(
+                        texto = "Agregar al carrito",
+                        onClick = onAgregarProducto
+                    )
+                }
+            }
         }
-
-        Button(
-            onClick = onVolverMenu,
-            modifier = Modifier.fillMaxWidth()
+    ) { espacioInterior ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(espacioInterior),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text(text = "Volver al menú")
+            item {
+                FotoDelivery(
+                    url = producto.imagenUrl,
+                    descripcion = producto.nombre,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1.1f)
+                        .clip(RoundedCornerShape(28.dp))
+                )
+            }
+
+            item {
+                EtiquetaDelivery(texto = producto.categoria)
+            }
+
+            item {
+                Text(
+                    text = producto.nombre,
+                    style = MaterialTheme.typography.headlineLarge
+                )
+            }
+
+            item {
+                Text(
+                    text = producto.descripcion,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

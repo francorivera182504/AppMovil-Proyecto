@@ -1,74 +1,105 @@
 package com.tuempresa.restaurantedelivery.ui.theme
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 @Composable
 fun InicioScreen(
     onIniciarSesion: () -> Unit,
     onCrearCuenta: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "🍔",
-            fontSize = 64.sp
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "RestauranteDelivery",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Comida rica, directo a tu puerta",
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(36.dp))
-
-        Button(
-            onClick = onIniciarSesion,
-            modifier = Modifier.fillMaxWidth()
+    Scaffold { espacioInterior ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(espacioInterior)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text(text = "Ya tengo una cuenta")
-        }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.1f)
+                    .clip(RoundedCornerShape(28.dp))
+            ) {
+                FotoDelivery(
+                    url = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=900&q=80",
+                    descripcion = "Hamburguesa de portada",
+                    modifier = Modifier.matchParentSize()
+                )
 
-        Spacer(modifier = Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.75f)
+                                )
+                            )
+                        )
+                )
 
-        OutlinedButton(
-            onClick = onCrearCuenta,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Crear una cuenta")
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "RestauranteDelivery",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Text(
+                        text = "Elige. Pide. Disfruta.",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+
+            Text(
+                text = "Tu próximo antojo\nempieza aquí.",
+                style = MaterialTheme.typography.headlineLarge
+            )
+
+            Text(
+                text = "Ingresa a tu cuenta o regístrate para elegir tu pedido.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                BotonDelivery(
+                    texto = "Ya tengo cuenta",
+                    onClick = onIniciarSesion
+                )
+
+                BotonDelivery(
+                    texto = "Crear cuenta",
+                    onClick = onCrearCuenta,
+                    secundario = true
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
