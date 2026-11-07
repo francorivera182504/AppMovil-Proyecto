@@ -18,6 +18,7 @@ import com.tuempresa.restaurantedelivery.data.nombreMetodoPago
 import com.tuempresa.restaurantedelivery.model.Pedido
 import java.text.SimpleDateFormat
 import java.util.Locale
+import com.tuempresa.restaurantedelivery.data.nombreEstadoPedido
 
 @Composable
 fun HistorialScreen(
@@ -145,7 +146,7 @@ fun HistorialScreen(
                                     )
 
                                     Text(
-                                        text = "Estado: ${pedido.estado}",
+                                        text = "Estado: ${nombreEstadoPedido(pedido.estado)}",
                                         color = MaterialTheme.colorScheme.primary
                                     )
 
@@ -186,7 +187,11 @@ fun HistorialScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(fechaDelPedido(pedidoSeleccionado.fecha))
-                    Text("Estado: ${pedidoSeleccionado.estado}")
+                    Text(
+                        text = "Estado: ${
+                            nombreEstadoPedido(pedidoSeleccionado.estado)
+                        }"
+                    )
 
                     Text(
                         text = "Productos",

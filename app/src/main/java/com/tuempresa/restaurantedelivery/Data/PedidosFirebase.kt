@@ -167,6 +167,24 @@ fun guardarPedido(
             require(productoActual != null) {
                 "Un producto ya no está disponible. Revisa tu carrito."
             }
+            require(
+                productoActual.activo &&
+                        productoActual.categoriaId.isNotBlank()
+            ) {
+                "Un producto fue desactivado o no tiene categoría. Revisa tu carrito."
+            }
+
+            val categoriaActual = transaccion.get(
+                db.collection("categorias")
+                    .document(productoActual.categoriaId)
+            )
+
+            require(
+                categoriaActual.exists() &&
+                        categoriaActual.getBoolean("activa") == true
+            ) {
+                "La categoría de un producto fue desactivada. Revisa tu carrito."
+            }
 
             require(
                 precioEnCentimos(productoActual.precio) ==
@@ -194,7 +212,7 @@ fun guardarPedido(
             "subtotalCentimos" to total,
             "totalCentimos" to total,
             "metodoPago" to metodoPago,
-            "estado" to "Confirmado",
+            "estado" to "Recibido",
             "fecha" to FieldValue.serverTimestamp()
         )
 

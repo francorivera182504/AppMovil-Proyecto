@@ -1,5 +1,6 @@
 package com.tuempresa.restaurantedelivery.ui.theme
 
+import android.R
 import android.util.Patterns
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,11 +31,15 @@ import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
-
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.focus.focusModifier
+import androidx.compose.ui.graphics.Color
 @Composable
 fun LoginScreen(
     onLoginExitoso: () -> Unit,
-    onVolverInicio: () -> Unit
+    onVolverInicio: () -> Unit,
+    onRecuperarContrasena: () -> Unit
 ) {
     var correo by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
@@ -180,8 +185,14 @@ fun LoginScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
+        BotonDelivery(
+            texto = "Olvidé mi contraseña",
+            onClick = onRecuperarContrasena,
+            enabled = !cargando,
+            modifier = Modifier.fillMaxWidth()
 
+        )
         Button(
             onClick = onVolverInicio,
             modifier = Modifier.fillMaxWidth(),

@@ -1,4 +1,4 @@
-package com.tuempresa.restaurantedelivery
+  package com.tuempresa.restaurantedelivery
 
 import android.net.Uri
 import android.os.Bundle
@@ -36,6 +36,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.tuempresa.restaurantedelivery.ui.theme.DeliveryTheme
+import com.tuempresa.restaurantedelivery.ui.theme.AccesoAdministrador
+import com.tuempresa.restaurantedelivery.ui.theme.PanelAdministradorScreen
+import com.tuempresa.restaurantedelivery.ui.theme.recordarAccesoAdministrador
+import com.tuempresa.restaurantedelivery.data.recordarCatalogo
+import com.tuempresa.restaurantedelivery.data.productosDisponibles
+import com.tuempresa.restaurantedelivery.ui.theme.AdminProductosScreen
+import com.tuempresa.restaurantedelivery.ui.theme.AdminPedidosScreen
+import com.tuempresa.restaurantedelivery.ui.theme.PerfilScreen
+import com.tuempresa.restaurantedelivery.ui.theme.RecuperarContrasenaScreen
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,6 +77,9 @@ fun AplicacionRestaurante() {
     var usuarioId by remember {
         mutableStateOf(auth.currentUser?.uid)
     }
+    val accesoAdministrador = recordarAccesoAdministrador(
+        usuarioId = usuarioId
+    )
 
     val pantallaInicial = remember {
         if (auth.currentUser != null) {
@@ -77,17 +89,13 @@ fun AplicacionRestaurante() {
         }
     }
 
-    var productos by remember(usuarioId) {
-        mutableStateOf<List<Producto>>(emptyList())
-    }
+    val catalogo = recordarCatalogo(usuarioId)
 
-    var cargandoProductos by remember(usuarioId) {
-        mutableStateOf(usuarioId != null)
-    }
+    val productos = productosDisponibles(catalogo)
 
-    var errorProductos by remember(usuarioId) {
-        mutableStateOf("")
-    }
+    val cargandoProductos = catalogo.cargando
+
+    val errorProductos = catalogo.error
 
     val contexto = LocalContext.current
 
@@ -264,71 +272,6 @@ fun AplicacionRestaurante() {
         }
     }
 
-    // Cargar el catálogo del usuario que inició sesión.
-    DisposableEffect(usuarioId) {
-        var escuchaActiva = true
-
-        val escuchaProductos = if (usuarioId != null) {
-            db.collection("productos")
-                .addSnapshotListener { resultado, error ->
-
-                    if (escuchaActiva) {
-                        cargandoProductos = false
-
-                        if (error != null) {
-                            productos = emptyList()
-                            errorProductos =
-                                "No se pudo cargar el menú. " +
-                                        "Revisa tu conexión y los permisos de Firestore."
-                        } else {
-                            try {
-                                productos = resultado
-                                    ?.documents
-                                    ?.map { documento ->
-
-                                        val producto = documento.toObject(
-                                            Producto::class.java
-                                        ) ?: throw IllegalArgumentException(
-                                            "Producto inválido"
-                                        )
-
-                                        require(
-                                            documento.contains("precio") &&
-                                                    producto.nombre.isNotBlank() &&
-                                                    producto.categoria.isNotBlank() &&
-                                                    producto.imagenUrl.isNotBlank() &&
-                                                    producto.precio.isFinite() &&
-                                                    producto.precio >= 0
-                                        )
-
-                                        producto.copy(
-                                            id = documento.id
-                                        )
-                                    }
-                                    ?.sortedBy { it.nombre }
-                                    ?: emptyList()
-
-                                errorProductos = ""
-
-                            } catch (_: Exception) {
-                                productos = emptyList()
-                                errorProductos =
-                                    "Hay un producto con datos inválidos. " +
-                                            "Revisa los campos y sus tipos en Firebase."
-                            }
-                        }
-                    }
-                }
-        } else {
-            null
-        }
-
-        onDispose {
-            escuchaActiva = false
-            escuchaProductos?.remove()
-        }
-    }
-
     NavHost(
         navController = navController,
         startDestination = pantallaInicial
@@ -346,6 +289,11 @@ fun AplicacionRestaurante() {
 
         composable("login") {
             LoginScreen(
+                onRecuperarContrasena = {
+                    navController.navigate("recuperarContrasena") {
+                        launchSingleTop = true
+                    }
+                },
                 onLoginExitoso = {
                     navController.navigate("menu") {
                         popUpTo("inicio") {
@@ -380,6 +328,20 @@ fun AplicacionRestaurante() {
 
         composable("menu") {
             MenuScreen(
+                onVerPerfil = {
+                    navController.navigate("perfil") {
+                        launchSingleTop = true
+                    }
+                },
+                esAdministrador =
+                    accesoAdministrador == AccesoAdministrador.ADMINISTRADOR,
+
+                onVerAdministracion = {
+                    navController.navigate("administracion") {
+                        launchSingleTop = true
+                    }
+                },
+
                 productos = productos,
                 cargando = cargandoProductos,
                 mensajeError = errorProductos,
@@ -460,10 +422,12 @@ fun AplicacionRestaurante() {
                     ProductoDetalleScreen(
                         producto = producto,
 
-                        onAgregarProducto = {
+                        guardando = guardandoCarrito,
+
+                        onAgregarProducto = { cantidad ->
                             cambiarCantidad(
                                 productoId = producto.id,
-                                cambio = 1L,
+                                cambio = cantidad,
                                 alGuardar = {
                                     if (
                                         navController.currentBackStackEntry
@@ -555,6 +519,140 @@ fun AplicacionRestaurante() {
             }
         }
 
+        composable("administracion") {
+            val uid = usuarioId
+
+            when {
+                uid == null -> {
+                    Text(
+                        text = "Inicia sesión para continuar."
+                    )
+                }
+
+                accesoAdministrador == AccesoAdministrador.CARGANDO -> {
+                    Text(
+                        text = "Comprobando permisos..."
+                    )
+                }
+
+                accesoAdministrador == AccesoAdministrador.ERROR -> {
+                    Text(
+                        text = "No se pudieron comprobar tus permisos. " +
+                                "Revisa la conexión y las reglas de Firebase."
+                    )
+                }
+
+                accesoAdministrador == AccesoAdministrador.ADMINISTRADOR -> {
+                    PanelAdministradorScreen(
+                        usuarioId = uid,
+
+                        onVerProductos = {
+                            navController.navigate("adminProductos") {
+                                launchSingleTop = true
+                            }
+                        },
+
+                        onVerPedidos = {
+                            navController.navigate("adminPedidos") {
+                                launchSingleTop = true
+                            }
+                        },
+
+                        onVolver = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                else -> {
+                    Text(
+                        text = "No tienes permiso para entrar a esta pantalla."
+                    )
+                }
+            }
+        }
+        composable("adminProductos") {
+            val uid = usuarioId
+
+            when {
+                uid == null -> {
+                    Text("Inicia sesión para continuar.")
+                }
+
+                accesoAdministrador == AccesoAdministrador.CARGANDO -> {
+                    Text("Comprobando permisos...")
+                }
+
+                accesoAdministrador == AccesoAdministrador.ERROR -> {
+                    Text("No se pudieron comprobar tus permisos.")
+                }
+
+                accesoAdministrador == AccesoAdministrador.ADMINISTRADOR -> {
+                    AdminProductosScreen(
+                        usuarioId = uid,
+                        onVolver = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                else -> {
+                    Text("No tienes permiso para gestionar productos.")
+                }
+            }
+        }
+        composable("adminPedidos") {
+            val uid = usuarioId
+
+            when {
+                uid == null -> {
+                    Text("Inicia sesión para continuar.")
+                }
+
+                accesoAdministrador == AccesoAdministrador.CARGANDO -> {
+                    Text("Comprobando permisos...")
+                }
+
+                accesoAdministrador == AccesoAdministrador.ERROR -> {
+                    Text("No se pudieron comprobar tus permisos.")
+                }
+
+                accesoAdministrador == AccesoAdministrador.ADMINISTRADOR -> {
+                    AdminPedidosScreen(
+                        usuarioId = uid,
+                        onVolver = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
+                else -> {
+                    Text("No tienes permiso para gestionar pedidos.")
+                }
+            }
+        }
+        composable("perfil") {
+            val uid = usuarioId
+
+            if (uid != null) {
+                PerfilScreen(
+                    usuarioId = uid,
+                    onVolver = {
+                        navController.popBackStack()
+                    }
+                )
+            } else {
+                Text("Inicia sesión para consultar tu perfil.")
+            }
+        }
+
+        composable("recuperarContrasena") {
+            RecuperarContrasenaScreen(
+                onVolver = {
+                    navController.popBackStack()
+                }
+            )
+        }
         composable("carrito") {
             CarritoScreen(
                 carrito = carrito,

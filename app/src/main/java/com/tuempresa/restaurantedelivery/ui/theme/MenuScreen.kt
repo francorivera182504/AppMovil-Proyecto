@@ -4,16 +4,20 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.tuempresa.restaurantedelivery.model.Producto
+import java.text.Normalizer
+import java.util.Locale
 
 @Composable
 fun MenuScreen(
@@ -25,8 +29,69 @@ fun MenuScreen(
     onVerCarrito: () -> Unit,
     onVerDirecciones: () -> Unit,
     onVerPedidos: () -> Unit,
-    onCerrarSesion: () -> Unit
+    onCerrarSesion: () -> Unit,
+    esAdministrador: Boolean,
+    onVerAdministracion: () -> Unit,
+    onVerPerfil: () -> Unit
 ) {
+    var busqueda by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    // null significa que se muestran todas las categorías.
+    var categoriaSeleccionada by rememberSaveable {
+        mutableStateOf<String?>(null)
+    }
+
+    // Las categorías salen de los productos reales de Firebase.
+    val categorias = remember(productos) {
+        productos
+            .map { it.categoria.trim() }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+            .sortedBy { it.lowercase(Locale.ROOT) }
+    }
+
+    // Si desaparece la categoría seleccionada, volvemos a "Todas".
+    LaunchedEffect(categorias, cargando, mensajeError) {
+        if (!cargando && mensajeError.isEmpty()) {
+            val seleccion = categoriaSeleccionada
+
+            if (
+                seleccion != null &&
+                categorias.none {
+                    it.equals(seleccion, ignoreCase = true)
+                }
+            ) {
+                categoriaSeleccionada = null
+            }
+        }
+    }
+
+    val productosFiltrados = remember(
+        productos,
+        busqueda,
+        categoriaSeleccionada
+    ) {
+        val textoBuscado = normalizarBusqueda(busqueda)
+        val categoria = categoriaSeleccionada
+
+        productos.filter { producto ->
+            val coincideNombre = normalizarBusqueda(
+                producto.nombre
+            ).contains(textoBuscado)
+
+            val coincideCategoria =
+                categoria == null ||
+                        producto.categoria.trim().equals(
+                            categoria,
+                            ignoreCase = true
+                        )
+
+            coincideNombre && coincideCategoria
+        }
+    }
+
     Scaffold(
         bottomBar = {
             Surface(
@@ -82,7 +147,9 @@ fun MenuScreen(
                         }
                     }
 
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
                             text = "RestauranteDelivery",
                             style = MaterialTheme.typography.titleSmall,
@@ -139,6 +206,83 @@ fun MenuScreen(
                     )
                 }
             }
+            item {
+                BotonDelivery(
+                    texto = "Mi perfil",
+                    onClick = onVerPerfil,
+                    secundario = true
+                )
+            }
+            if (esAdministrador) {
+                item {
+                    BotonDelivery(
+                        texto = "Panel de administración",
+                        onClick = onVerAdministracion,
+                        secundario = true
+                    )
+                }
+            }
+            item {
+                OutlinedTextField(
+                    value = busqueda,
+                    onValueChange = {
+                        busqueda = it
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text("Buscar productos")
+                    },
+                    placeholder = {
+                        Text("Escribe el nombre de un producto")
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    trailingIcon = {
+                        if (busqueda.isNotEmpty()) {
+                            TextButton(
+                                onClick = {
+                                    busqueda = ""
+                                }
+                            ) {
+                                Text("Borrar")
+                            }
+                        }
+                    }
+                )
+            }
+
+            item {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = categoriaSeleccionada == null,
+                            onClick = {
+                                categoriaSeleccionada = null
+                            },
+                            label = {
+                                Text("Todas")
+                            }
+                        )
+                    }
+
+                    items(categorias) { categoria ->
+                        FilterChip(
+                            selected = categoriaSeleccionada.equals(
+                                categoria,
+                                ignoreCase = true
+                            ),
+                            onClick = {
+                                categoriaSeleccionada = categoria
+                            },
+                            label = {
+                                Text(categoria)
+                            }
+                        )
+                    }
+                }
+            }
 
             item {
                 Text(
@@ -159,10 +303,7 @@ fun MenuScreen(
                         ) {
                             CircularProgressIndicator()
 
-                            Text(
-                                text = "Cargando el menú...",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Text("Cargando el menú...")
                         }
                     }
                 }
@@ -187,15 +328,45 @@ fun MenuScreen(
                     item {
                         Text(
                             text = "Todavía no hay productos disponibles.",
-                            modifier = Modifier.padding(vertical = 24.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            modifier = Modifier.padding(vertical = 24.dp)
                         )
+                    }
+                }
+
+                productosFiltrados.isEmpty() -> {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "Sin resultados",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+
+                            Text(
+                                text = "Prueba otro nombre o categoría.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            BotonDelivery(
+                                texto = "Limpiar filtros",
+                                secundario = true,
+                                onClick = {
+                                    busqueda = ""
+                                    categoriaSeleccionada = null
+                                }
+                            )
+                        }
                     }
                 }
 
                 else -> {
                     items(
-                        items = productos,
+                        items = productosFiltrados,
                         key = { it.id }
                     ) { producto ->
                         Card(
@@ -253,4 +424,12 @@ fun MenuScreen(
             }
         }
     }
+}
+
+// Permite buscar "limon" y encontrar "Limón".
+private fun normalizarBusqueda(texto: String): String {
+    return Normalizer
+        .normalize(texto.trim(), Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "")
+        .lowercase(Locale.ROOT)
 }
